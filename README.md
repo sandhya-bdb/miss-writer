@@ -6,11 +6,34 @@ This project turns spoken, fragmented thoughts into coherent, well-written stori
 
 The system is built as a modular pipeline across several stages:
 
+```mermaid
+graph TD
+    Client[Browser / Streamlit UI] -->|Audio Segment| API[FastAPI Backend]
+    API -->|Raw Audio| Whisper[OpenAI Whisper API]
+    Whisper -->|Transcript| API
+    API -->|Transcript| LangGraph[LangGraph Orchestrator]
+    LangGraph -->|Themes/Emotions| ThoughtAgent[Thought Interpreter Node]
+    ThoughtAgent -->|Structured Thoughts| StoryAgent[Story Writer Node]
+    StoryAgent -->|Final Story| LangGraph
+    LangGraph -->|Final Story| API
+    API -->|Final Story| Client
+```
+
 1. **Audio Capture Layer**: A Streamlit frontend uses `st.audio_input` to record the user's voice naturally.
 2. **Speech-to-Text Layer**: The recorded audio is sent to the FastAPI backend, where OpenAI's Whisper API converts speech to text.
 3. **Thought Structuring Agent**: A LangGraph node (`app/agents/thought_interpreter.py`) invokes GPT to extract `themes`, `emotions`, and `core_ideas` from the raw transcript.
 4. **Story Generation Agent**: Another LangGraph node (`app/agents/story_writer.py`) transforms the organized thoughts into a cohesive narrative, preserving the user's emotional tone.
 5. **Output Layer**: The FastAPI backend returns the synthesized story to the Streamlit UI for display.
+
+### LangGraph Flow
+
+```mermaid
+stateDiagram-v2
+    [*] --> ThoughtInterpreter : Transcript Input
+    ThoughtInterpreter --> StoryWriter : Extraction (Themes, Emotions)
+    StoryWriter --> [*] : Generated Story
+```
+
 
 ## Project Structure
 
@@ -80,18 +103,29 @@ If you have Docker Desktop installed, you can run the entire stack locally witho
 docker-compose up --build
 ```
 
-### Deploying to Render.com (Recommended)
-Render is an excellent platform for deploying this agent for free.
+### Deploying to Railway.app (Recommended)
+Railway is an excellent platform for deploying this agent for free.
+
+1. Create a GitHub repository and push this code to it.
+2. Go to **[Railway.app](https://railway.app/)**, sign up with GitHub, and click **New Project** -> **Deploy from GitHub repo**.
+3. Select your repository.
+4. **Environment Variables (Important):**
+   - Click on your new service block, go to the **Variables** tab, and click **New Variable**.
+   - Add `OPENAI_API_KEY` with your secret key as the value.
+5. **Networking & Domain:**
+   - Go to the **Settings** tab and scroll down to **Networking**.
+   - Under **Public Networking**, click **Generate Domain**.
+   - Ensure the exposed port is selected as `8501` (for Streamlit).
+6. Click **Deploy** to publish Miss Writer live!
+
+### Deploying to Render.com (Alternative)
+Render is another solid platform for deployment.
 
 1. Create a GitHub repository and push this code to it.
 2. Go to **[Render.com](https://render.com/)**, sign up, and click **New > Web Service**.
 3. Connect your GitHub repository.
 4. **Configuration Settings:**
-   - **Name:** `voice-story-agent`
    - **Environment:** `Docker`
-   - **Branch:** `main`
-5. **Environment Variables (Important):**
+5. **Environment Variables:**
    - Click "Advanced" during setup and add your `OPENAI_API_KEY`.
 6. Click **Create Web Service**.
-
-> **Note on Ports:** Render automatically detects the `Dockerfile` and builds your app. Because Render exposes one web port per service, you might eventually want to split Streamlit and FastAPI into two separate Render services for maximum scale, but the provided `Dockerfile` will boot both via `run.py` for simplicity on a single service!
