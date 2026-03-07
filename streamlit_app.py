@@ -173,4 +173,17 @@ if st.session_state.result:
             
     with col2:
         st.subheader("✨ Final Story ✨")
-        st.success(data.get("story", "No story generated."))
+        st.markdown("**Human-in-the-loop Editing:** Feel free to correct any spelling or grammar mistakes below before saving.")
+        edited_story = st.text_area(
+            label="Story Content",
+            value=data.get("story", "No story generated."),
+            height=400,
+            label_visibility="collapsed"
+        )
+        
+        st.download_button(
+            label="💾 Download Final Story",
+            data=edited_story,
+            file_name="miss_writer_story.txt",
+            mime="text/plain"
+        )
