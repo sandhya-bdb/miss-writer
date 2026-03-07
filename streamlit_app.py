@@ -1,5 +1,8 @@
 import streamlit as st
 import requests
+import os
+from fpdf import FPDF
+import tempfile
 
 st.set_page_config(page_title="Miss Writer", page_icon="🎙️", layout="wide", initial_sidebar_state="collapsed")
 
@@ -122,14 +125,35 @@ st.markdown("<h1 class='main-title'>🎙️ Miss Writer</h1>", unsafe_allow_html
 st.markdown("<p class='sub-title'>Speak your thoughts naturally. The AI will interpret them and write a beautiful story.</p>", unsafe_allow_html=True)
 st.divider()
 
-# Initialize session state for storing result
+# Sidebar for Controls and History
+with st.sidebar:
+    st.header("⚙️ Story Settings")
+    selected_genre = st.selectbox(
+        "Genre",
+        ["Creative Narrative", "Journal Entry", "Fairy Tale", "Sci-Fi", "Mystery", "Romance"]
+    )
+    selected_tone = st.selectbox(
+        "Tone",
+        ["Engaging", "Professional", "Melancholy", "Humorous", "Inspirational", "Dark"]
+    )
+    
+    st.divider()
+    st.header("🔄 Story History")
+    if st.button("Start New Story (Clear History)"):
+        st.session_state.story_history = ""
+        st.session_state.result = None
+        st.rerun()
+
+# Initialize session state for storing result & history
 if "result" not in st.session_state:
     st.session_state.result = None
+if "story_history" not in st.session_state:
+    st.session_state.story_history = ""
 
 # Audio recording widget
 audio_value = st.audio_input("Record your thoughts")
 
-import os
+
 
 # Get backend URL from env, default to localhost for development
 API_URL = os.getenv("BACKEND_API_URL", "http://localhost:8082")
@@ -139,11 +163,17 @@ if audio_value is not None:
     if st.button("Generate Story", type="primary"):
         with st.spinner("Processing your thoughts... This may take a moment."):
             files = {"audio": ("recording.wav", audio_value, "audio/wav")}
+            data = {
+                "genre": selected_genre,
+                "tone": selected_tone,
+                "previous_story": st.session_state.story_history if st.session_state.story_history else ""
+            }
             try:
-                response = requests.post(f"{API_URL}/process-audio", files=files, timeout=60)
+                response = requests.post(f"{API_URL}/process-audio", files=files, data=data, timeout=60)
                 
                 if response.status_code == 200:
                     st.session_state.result = response.json()
+                    st.session_state.story_history = st.session_state.result.get("story", "")
                     st.success("Story successfully generated!")
                 else:
                     st.error(f"Error: {response.status_code} - {response.text}")
@@ -181,9 +211,43 @@ if st.session_state.result:
             label_visibility="collapsed"
         )
         
-        st.download_button(
-            label="💾 Download Final Story",
-            data=edited_story,
-            file_name="miss_writer_story.txt",
-            mime="text/plain"
-        )
+        # Helper to generate PDF function
+        def create_pdf(text):
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", size=12)
+            
+            # Add Logo / Header
+            pdf.set_font("Arial", "B", 24)
+            pdf.cell(200, 10, txt="Miss Writer", ln=1, align="C")
+            pdf.ln(10)
+            
+            pdf.set_font("Arial", "", 12)
+            # FPDF multicell handles the line breaking
+            # Deal with unicode characters by encoding to latin-1 and replacing unrepresentable characters.
+            clean_text = text.encode('latin-1', 'replace').decode('latin-1')
+            pdf.multi_cell(0, 10, txt=clean_text)
+            
+            # Save to temporary file and read as bytes
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                pdf.output(tmp.name)
+                with open(tmp.name, "rb") as f:
+                    pdf_bytes = f.read()
+            os.remove(tmp.name)
+            return pdf_bytes
+            
+        col_btn1, col_btn2 = st.columns(2)
+        with col_btn1:
+            st.download_button(
+                label="💾 Download as Text",
+                data=edited_story,
+                file_name="miss_writer_story.txt",
+                mime="text/plain"
+            )
+        with col_btn2:
+            st.download_button(
+                label="📄 Download as PDF",
+                data=create_pdf(edited_story),
+                file_name="miss_writer_story.pdf",
+                mime="application/pdf"
+            )

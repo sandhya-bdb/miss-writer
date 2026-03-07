@@ -14,6 +14,9 @@ class AgentState(TypedDict):
     emotions: List[str]
     core_ideas: List[str]
     story: str
+    genre: str
+    tone: str
+    previous_story: str
 
 def speech_to_text_node(state: AgentState):
     logger.info("Running speech_to_text_node")
@@ -31,7 +34,14 @@ def thought_interpreter_node(state: AgentState):
 
 def story_writer_node(state: AgentState):
     logger.info("Running story_writer_node")
-    story = write_story(state["themes"], state["emotions"], state["core_ideas"])
+    story = write_story(
+        themes=state["themes"], 
+        emotions=state["emotions"], 
+        core_ideas=state["core_ideas"],
+        genre=state.get("genre", "Creative Narrative"),
+        tone=state.get("tone", "Engaging"),
+        previous_story=state.get("previous_story", None)
+    )
     return {"story": story}
 
 def build_graph():

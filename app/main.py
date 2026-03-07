@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel
 import os
 import shutil
@@ -20,7 +20,12 @@ class StoryResponse(BaseModel):
     story: str
 
 @app.post("/process-audio", response_model=StoryResponse)
-async def process_audio(audio: UploadFile = File(...)):
+async def process_audio(
+    audio: UploadFile = File(...),
+    genre: str = Form("Creative Narrative"),
+    tone: str = Form("Engaging"),
+    previous_story: str = Form(None)
+):
     """
     Upload an audio file, transcribes it, structures the thoughts, and writes a story.
     """
@@ -36,7 +41,12 @@ async def process_audio(audio: UploadFile = File(...)):
         logger.info(f"Saved audio file to {file_path}")
             
         # Run graph
-        initial_state = {"audio_path": file_path}
+        initial_state = {
+            "audio_path": file_path,
+            "genre": genre,
+            "tone": tone,
+            "previous_story": previous_story
+        }
         result = graph.invoke(initial_state)
         
         return StoryResponse(
