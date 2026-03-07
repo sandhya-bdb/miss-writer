@@ -11,7 +11,14 @@ def run_api():
 def run_ui():
     """Run the Streamlit frontend."""
     time.sleep(2) # Give the API a moment to start
-    subprocess.run([sys.executable, "-m", "streamlit", "run", "streamlit_app.py", "--server.port", "8501"])
+    subprocess.run([
+        sys.executable, "-m", "streamlit", "run", "streamlit_app.py", 
+        "--server.port", "8501", 
+        "--server.address", "0.0.0.0",
+        "--server.enableCORS", "false", 
+        "--server.enableXsrfProtection", "false",
+        "--browser.gatherUsageStats", "false"
+    ])
 
 if __name__ == "__main__":
     print("Starting Miss Writer...")
