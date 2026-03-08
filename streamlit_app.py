@@ -154,8 +154,8 @@ with tab1:
     # Initialize session state for storing result & history
     if "result" not in st.session_state:
         st.session_state.result = None
-if "story_history" not in st.session_state:
-    st.session_state.story_history = ""
+    if "story_history" not in st.session_state:
+        st.session_state.story_history = ""
 
     # Audio recording widget
     audio_value = st.audio_input("Record your thoughts")
@@ -171,7 +171,7 @@ if "story_history" not in st.session_state:
                     "previous_story": st.session_state.story_history if st.session_state.story_history else ""
                 }
                 try:
-                    response = requests.post(f"{API_URL}/process-audio", files=files, data=data, timeout=60)
+                    response = requests.post(f"{API_URL}/process-audio", files=files, data=data, timeout=180)
                     
                     if response.status_code == 200:
                         st.session_state.result = response.json()
