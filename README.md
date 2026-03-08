@@ -1,6 +1,8 @@
 # Miss Writer
 
-This project turns spoken, fragmented thoughts into coherent, well-written stories using LangGraph, OpenAI, FastAPI, and Streamlit.
+Miss Writer is an intelligent voice-to-story agent that seamlessly turns spoken, fragmented thoughts into coherent, well-written stories. By leveraging the power of **OpenAI's Whisper AI** for highly accurate speech-to-text transcription, coupled with **LangGraph**, **OpenAI**, **FastAPI**, and **Streamlit**, this project captures the nuances and emotions of your voice and structures them into compelling narratives.
+
+With the recent addition of **Database Support (SQLite)**, all your generated stories along with their transcribed thoughts are securely saved, allowing you to easily browse, read, and revisit past stories directly within the app.
 
 ## Architecture
 
@@ -20,10 +22,11 @@ graph TD
 ```
 
 1. **Audio Capture Layer**: A Streamlit frontend uses `st.audio_input` to record the user's voice naturally.
-2. **Speech-to-Text Layer**: The recorded audio is sent to the FastAPI backend, where OpenAI's Whisper API converts speech to text.
+2. **Speech-to-Text Layer**: The recorded audio is sent to the FastAPI backend, where **OpenAI's Whisper API** converts speech to text with remarkable accuracy.
 3. **Thought Structuring Agent**: A LangGraph node (`app/agents/thought_interpreter.py`) invokes GPT to extract `themes`, `emotions`, and `core_ideas` from the raw transcript.
 4. **Story Generation Agent**: Another LangGraph node (`app/agents/story_writer.py`) transforms the organized thoughts into a cohesive narrative, preserving the user's emotional tone.
-5. **Output Layer**: The FastAPI backend returns the synthesized story to the Streamlit UI for display.
+5. **Storage Layer**: The generated story, themes, and transcript are saved to a local **SQLite Database** (`stories.db`) for persistency.
+6. **Output & Retrieval Layer**: The FastAPI backend returns the synthesized story to the Streamlit UI. Users can also fetch and browse their history of previously created stories.
 
 ### LangGraph Flow
 
@@ -44,6 +47,7 @@ voice_story_agent/
 │   ├── __init__.py
 │   ├── main.py                     # FastAPI backend
 │   ├── graph.py                    # LangGraph orchestration
+│   ├── database.py                 # SQLite database storage & retrieval
 │   ├── agents/
 │   │   ├── thought_interpreter.py  # Structured extraction of thoughts
 │   │   └── story_writer.py         # Creative writing logic
