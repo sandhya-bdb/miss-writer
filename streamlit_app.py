@@ -144,110 +144,156 @@ with st.sidebar:
         st.session_state.result = None
         st.rerun()
 
-# Initialize session state for storing result & history
-if "result" not in st.session_state:
-    st.session_state.result = None
-if "story_history" not in st.session_state:
-    st.session_state.story_history = ""
-
-# Audio recording widget
-audio_value = st.audio_input("Record your thoughts")
-
-
-
 # Get backend URL from env, default to localhost for development
 API_URL = os.getenv("BACKEND_API_URL", "http://localhost:8082")
 
-if audio_value is not None:
-    # Adding a separate button to process, giving the user a chance to listen to their audio first
-    if st.button("Generate Story", type="primary"):
-        with st.spinner("Processing your thoughts... This may take a moment."):
-            files = {"audio": ("recording.wav", audio_value, "audio/wav")}
-            data = {
-                "genre": selected_genre,
-                "tone": selected_tone,
-                "previous_story": st.session_state.story_history if st.session_state.story_history else ""
-            }
-            try:
-                response = requests.post(f"{API_URL}/process-audio", files=files, data=data, timeout=60)
-                
-                if response.status_code == 200:
-                    st.session_state.result = response.json()
-                    st.session_state.story_history = st.session_state.result.get("story", "")
-                    st.success("Story successfully generated!")
-                else:
-                    st.error(f"Error: {response.status_code} - {response.text}")
-            except Exception as e:
-                st.error(f"Failed to connect to backend: {e}")
+# Setup Main UI Tabs
+tab1, tab2 = st.tabs(["📝 Create Story", "📚 My Library"])
 
-# Display Results
-if st.session_state.result:
-    data = st.session_state.result
-    
-    col1, col2 = st.columns([1, 2])
-    
-    with col1:
-        st.subheader("📝 Your Transcript")
-        st.info(data.get("transcript", "No transcript found."))
+with tab1:
+    # Initialize session state for storing result & history
+    if "result" not in st.session_state:
+        st.session_state.result = None
+if "story_history" not in st.session_state:
+    st.session_state.story_history = ""
+
+    # Audio recording widget
+    audio_value = st.audio_input("Record your thoughts")
+
+    if audio_value is not None:
+        # Adding a separate button to process, giving the user a chance to listen to their audio first
+        if st.button("Generate Story", type="primary"):
+            with st.spinner("Processing your thoughts... This may take a moment."):
+                files = {"audio": ("recording.wav", audio_value, "audio/wav")}
+                data = {
+                    "genre": selected_genre,
+                    "tone": selected_tone,
+                    "previous_story": st.session_state.story_history if st.session_state.story_history else ""
+                }
+                try:
+                    response = requests.post(f"{API_URL}/process-audio", files=files, data=data, timeout=60)
+                    
+                    if response.status_code == 200:
+                        st.session_state.result = response.json()
+                        st.session_state.story_history = st.session_state.result.get("story", "")
+                        st.success("Story successfully generated!")
+                    else:
+                        st.error(f"Error: {response.status_code} - {response.text}")
+                except Exception as e:
+                    st.error(f"Failed to connect to backend: {e}")
+
+    # Display Results
+    if st.session_state.result:
+        data = st.session_state.result
         
-        st.subheader("🧠 Thought Interpretation")
-        st.write("**Themes:**")
-        st.caption(", ".join(data.get("themes", [])))
+        col1, col2 = st.columns([1, 2])
         
-        st.write("**Emotions:**")
-        st.caption(", ".join(data.get("emotions", [])))
-        
-        st.write("**Core Ideas:**")
-        for idea in data.get("core_ideas", []):
-            st.markdown(f"- {idea}")
+        with col1:
+            st.subheader("📝 Your Transcript")
+            st.info(data.get("transcript", "No transcript found."))
             
-    with col2:
-        st.subheader("✨ Final Story ✨")
-        st.markdown("**Human-in-the-loop Editing:** Feel free to correct any spelling or grammar mistakes below before saving.")
-        edited_story = st.text_area(
-            label="Story Content",
-            value=data.get("story", "No story generated."),
-            height=400,
-            label_visibility="collapsed"
-        )
-        
-        # Helper to generate PDF function
-        def create_pdf(text):
-            pdf = FPDF()
-            pdf.add_page()
-            pdf.set_font("Arial", size=12)
+            st.subheader("🧠 Thought Interpretation")
+            st.write("**Themes:**")
+            st.caption(", ".join(data.get("themes", [])))
             
-            # Add Logo / Header
-            pdf.set_font("Arial", "B", 24)
-            pdf.cell(200, 10, txt="Miss Writer", ln=1, align="C")
-            pdf.ln(10)
+            st.write("**Emotions:**")
+            st.caption(", ".join(data.get("emotions", [])))
             
-            pdf.set_font("Arial", "", 12)
-            # FPDF multicell handles the line breaking
-            # Deal with unicode characters by encoding to latin-1 and replacing unrepresentable characters.
-            clean_text = text.encode('latin-1', 'replace').decode('latin-1')
-            pdf.multi_cell(0, 10, txt=clean_text)
-            
-            # Save to temporary file and read as bytes
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-                pdf.output(tmp.name)
-                with open(tmp.name, "rb") as f:
-                    pdf_bytes = f.read()
-            os.remove(tmp.name)
-            return pdf_bytes
-            
-        col_btn1, col_btn2 = st.columns(2)
-        with col_btn1:
-            st.download_button(
-                label="💾 Download as Text",
-                data=edited_story,
-                file_name="miss_writer_story.txt",
-                mime="text/plain"
+            st.write("**Core Ideas:**")
+            for idea in data.get("core_ideas", []):
+                st.markdown(f"- {idea}")
+                
+        with col2:
+            st.subheader("✨ Final Story ✨")
+            st.markdown("**Human-in-the-loop Editing:** Feel free to correct any spelling or grammar mistakes below before saving.")
+            edited_story = st.text_area(
+                label="Story Content",
+                value=data.get("story", "No story generated."),
+                height=400,
+                label_visibility="collapsed"
             )
-        with col_btn2:
-            st.download_button(
-                label="📄 Download as PDF",
-                data=create_pdf(edited_story),
-                file_name="miss_writer_story.pdf",
-                mime="application/pdf"
-            )
+            
+            # Helper to generate PDF function
+            def create_pdf(text):
+                pdf = FPDF()
+                pdf.add_page()
+                pdf.set_font("Arial", size=12)
+                
+                # Add Logo / Header
+                pdf.set_font("Arial", "B", 24)
+                pdf.cell(200, 10, txt="Miss Writer", ln=1, align="C")
+                pdf.ln(10)
+                
+                pdf.set_font("Arial", "", 12)
+                # FPDF multicell handles the line breaking
+                # Deal with unicode characters by encoding to latin-1 and replacing unrepresentable characters.
+                clean_text = text.encode('latin-1', 'replace').decode('latin-1')
+                pdf.multi_cell(0, 10, txt=clean_text)
+                
+                # Save to temporary file and read as bytes
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                    pdf.output(tmp.name)
+                    with open(tmp.name, "rb") as f:
+                        pdf_bytes = f.read()
+                os.remove(tmp.name)
+                return pdf_bytes
+                
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                st.download_button(
+                    label="💾 Download as Text",
+                    data=edited_story,
+                    file_name="miss_writer_story.txt",
+                    mime="text/plain"
+                )
+            with col_btn2:
+                st.download_button(
+                    label="📄 Download as PDF",
+                    data=create_pdf(edited_story),
+                    file_name="miss_writer_story.pdf",
+                    mime="application/pdf"
+                )
+
+with tab2:
+    st.header("📚 My Library")
+    st.markdown("Here are all the amazing stories you've created with Miss Writer.")
+    st.divider()
+    
+    # Add a refresh button
+    col_ref1, col_ref2 = st.columns([8, 2])
+    with col_ref2:
+        if st.button("🔄 Refresh Library"):
+            st.rerun()
+            
+    try:
+        response = requests.get(f"{API_URL}/stories", timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            stories = data.get("stories", [])
+            
+            if not stories:
+                st.info("Your library is empty. Let's create your first story on the 'Create Story' tab!")
+            else:
+                for i, s in enumerate(stories):
+                    date_str = s.get("timestamp", "").split("T")[0]
+                    # Create an accordion for each story
+                    with st.expander(f"📖 Story from {date_str} - {s.get('genre', 'Unknown')} ({s.get('tone', 'Unknown')})"):
+                        st.markdown(f"**Themes:** {', '.join(s.get('themes', []))}")
+                        
+                        st.markdown("### The Story")
+                        st.write(s.get("story", ""))
+                        
+                        col_l1, col_l2 = st.columns(2)
+                        with col_l1:
+                            st.download_button(
+                                label="💾 Download Text",
+                                data=s.get("story", ""),
+                                file_name=f"miss_writer_{date_str}.txt",
+                                mime="text/plain",
+                                key=f"dl_txt_{i}"
+                            )
+        else:
+            st.error(f"Failed to load stories: {response.text}")
+    except Exception as e:
+        st.error(f"Could not connect to the database to fetch stories: {e}")
+
